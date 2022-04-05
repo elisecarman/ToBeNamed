@@ -7,6 +7,8 @@ from torch.nn import functional as F
 from torch.cuda.amp import GradScaler, autocast
 
 from torchvision import datasets
+from zsl_clip import ZeroshotCLIP
+from PIL import Image
 
 
 def train(dataloader1, dataloader2, model, loss_fn, optimizer, word_to_ix):
@@ -83,6 +85,10 @@ def main():
 
 def main2():
     print("hello")
+    clip = ZeroshotCLIP()
+    clip.build_model()
+    img = Image.open("data/test_image.png")
+    clip.model_inference(image)
 
 
 if __name__ == '__main__':

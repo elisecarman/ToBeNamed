@@ -31,11 +31,8 @@ class PromptLearner(nn.Module):
         print("Encoding Augmented Images (Second)")
         encoded_features2 = self.image_encoder.forward(batch_aug2)
 
-        #use clip to label the batch of images
-        logits_per_image1, logits_per_text1 = model(batch_aug1, prompts)
-        probs1 = logits_per_image.softmax(dim=-1).cpu().numpy()
-        logits_per_image2, logits_per_text2 = model(batch_aug2, prompts)
-        probs2 = logits_per_image.softmax(dim=-1).cpu().numpy()
+        
+
         #do clip prediction
         #depending on prediction, add features to class vector
         #feed prompts into text encoder

@@ -33,18 +33,19 @@ CUSTOM_TEMPLATES = {
 
 class ZeroshotCLIP(nn.Module):
     def build_model(self):
-        cfg = self.cfg
-        classnames = self.dm.dataset.classnames
+        # cfg = self.cfg
+        # classnames = self.dm.dataset.classnames
 
         print("Loading CLIP")
         clip_model = load_clip_to_cpu(cfg)
-        clip_model.to(self.device)
+        # clip_model.to(self.device)
 
-        temp = CUSTOM_TEMPLATES[cfg.DATASET.NAME]
-        prompts = [temp.format(c.replace("_", " ")) for c in classnames]
-        print(f"Prompts: {prompts}")
+        # temp = CUSTOM_TEMPLATES[cfg.DATASET.NAME]
+        # prompts = [temp.format(c.replace("_", " ")) for c in classnames]
+        # print(f"Prompts: {prompts}")
+        prompts = ["a photo of a dog", "a photo of a cat", "a photo of a cardinal"]
         prompts = torch.cat([clip.tokenize(p) for p in prompts])
-        prompts = prompts.to(self.device)
+        # prompts = prompts.to(self.device)
 
         with torch.no_grad():
             text_features = clip_model.encode_text(prompts)
