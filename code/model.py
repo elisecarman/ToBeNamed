@@ -30,12 +30,9 @@ class PromptLearner(nn.Module):
         encoded_features1 = self.image_encoder.forward(batch_aug1)
         print("Encoding Augmented Images (Second)")
         encoded_features2 = self.image_encoder.forward(batch_aug2)
-
-        
-
-        #do clip prediction
-        #depending on prediction, add features to class vector
-        #feed prompts into text encoder
+        #do clip ZSL prediction using zsl_clip.py
+        #depending on prediction, add image features to class vector/prompt (this is the thing we learn)
+        #feed prompts into text encoder (the prompt is the static thing "a photo of a" + the (image feature + class))
         #do contrastive loss
         encoded_text = clip.encode_text(text)
         return encoded_text

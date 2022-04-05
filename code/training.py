@@ -87,8 +87,7 @@ def main2():
     print("hello")
     clip = ZeroshotCLIP()
     clip.build_model()
-    img = Image.open("data/test_image.png")
-    clip.model_inference(image)
+    clip.model_inference()
 
 
 if __name__ == '__main__':
