@@ -32,7 +32,7 @@ class PromptLearner(nn.Module):
         encoded_features2 = self.image_encoder.forward(batch_aug2)
         #do clip ZSL prediction using zsl_clip.py
         #depending on prediction, add image features to class vector/prompt (this is the thing we learn)
-        #feed prompts into text encoder (the prompt is the static thing "a photo of a" + the (image feature + class))
+        #feed prompts into text encoder (the prompt is the static thing "a photo of a" + the <image feature + class rep> vector)
         #do contrastive loss
         encoded_text = clip.encode_text(text)
         return encoded_text
