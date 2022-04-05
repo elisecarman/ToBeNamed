@@ -2,75 +2,11 @@ import os.path as osp
 
 import torch
 
-torch.manual_seed(17)
-
 import torch.nn as nn
 from torch.nn import functional as F
 from torch.cuda.amp import GradScaler, autocast
 
 from torchvision import datasets
-from dassl.engine import TRAINER_REGISTRY, TrainerX
-from dassl.metrics import compute_accuracy
-from dassl.utils import load_pretrained_weights, load_checkpoint
-from dassl.optim import build_optimizer, build_lr_scheduler
-
-from clip import clip
-from clip.simple_tokenizer import SimpleTokenizer as _Tokenizer
-
-class LanguageModeler(nn.Module):
-
-    def __init__(self, vocab_size, embedding_dim, context_size):
-        super(LanguageModeler, self).__init__()
-        self.embeddings = nn.Embedding(vocab_size, embedding_dim)
-        self.linear1 = nn.Linear(context_size * embedding_dim, 128)
-        self.linear2 = nn.Linear(128, vocab_size)
-
-    def forward(self, inputs, visual_features, textEncoder):
-        #look up embeddings
-        embeds = self.embeddings(inputs).view((1, -1))
-        out = F.relu(self.linear1(embeds))
-        out = self.linear2(out)
-
-        out = numpy.add(embeds, visual_features)
-
-        out = get_text_features(out, textEncoder)
-
-        return out
-
-
-def augment_image(dbatchsize):
-    augmented1 = torch.utils.data.DataLoader(
-        datasets.FashionMNIST('data', train=True, download=True,
-                       transform=transforms.Compose([
-                           # Add random transformations to the image.
-                           transforms.RandomAffine(
-                               degrees=30, translate=(0.5, 0.5), scale=(0.25, 1),
-                               shear=(-30, 30, -30, 30)),
-
-                           transforms.ToTensor(),
-                           """ transforms.Normalize((0.1307,), (0.3081,)) """
-                       ])), batch_size = batchsize)
-
-    augmented2 = torch.utils.data.DataLoader(
-        datasets.FashionMNIST('data', train=True, download=True,
-                       transform=transforms.Compose([
-                           # Add random transformations to the image.
-                           transforms.RandomAffine(
-                               degrees=30, translate=(0.5, 0.5), scale=(0.25, 1),
-                               shear=(-30, 30, -30, 30)),
-
-                           transforms.ToTensor(),
-                           """ transforms.Normalize((0.1307,), (0.3081,)) """
-                       ])), batch_size = batchsize)
-
-    return augmented1, augmented2
-
-def preprocess_data():
-
-def get_visual_features():
-
-
-def get_text_features():
 
 
 def train(dataloader1, dataloader2, model, loss_fn, optimizer, word_to_ix):
@@ -91,13 +27,13 @@ def train(dataloader1, dataloader2, model, loss_fn, optimizer, word_to_ix):
         # Prepare the inputs to be passed to the model (i.e, turn the words
        # into integer indices and wrap them in tensors)
 
-       word_idxs = torch.tensor([word_to_ix[w] for w in predict_class], dtype=torch.long)
+        word_idxs = torch.tensor([word_to_ix[w] for w in predict_class], dtype=torch.long)
         
 
        # Step 2. Recall that torch *accumulates* gradients. Before passing in a
        # new instance, you need to zero out the gradients from the old
        # instance
-       model.zero_grad()
+        model.zero_grad()
 
        # Step 3. Run the forward pass: Add word embeddings to visual features, pass through text encoder.
         text_features = model(dataloader1, visual_features, textEncoder)
@@ -115,10 +51,6 @@ def train(dataloader1, dataloader2, model, loss_fn, optimizer, word_to_ix):
         total_loss += loss.item()
 
     losses.append(total_loss)
-
-
-
-def test():
 
 def main():
     #obtain data
@@ -139,7 +71,7 @@ def main():
     model = LanguageModeler(vocab1.shape[0], EMBEDDING_DIM, CONTEXT_SIZE)
     optimizer = optim.SGD(model.parameters(), lr=0.001)
     
-""" info on loss: https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#ntxentloss"""
+    # info on loss: https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#ntxentloss
     loss_func = losses.NTXentLoss(temperature=0.07, **kwargs)
 
 
@@ -149,6 +81,9 @@ def main():
     for epoch in range(10):
         train()
 
+def main2():
+    print("hello")
+
 
 if __name__ == '__main__':
-    main()
+    main2()
