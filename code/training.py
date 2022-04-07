@@ -12,14 +12,14 @@ from PIL import Image
 from utils import augment_image
 from model import PromptLearner
 
-def train(augmented1, augmented2, model, loss_fn, optimizer, image_encoder, text_encoder):
+def train(augmented1, augmented2, model, loss_fn, optimizer, clip_model):
     total_size = len(augmented1)
     total_loss = 0
 
     #need to fix this for loop statement
    dataloader_iterator = iter(augmented2)
 
-    for i, (images, label) in enumerate(augmented1):
+    for i, (images, label) in enumerate(augmented1): #NOTE: We won't have the labels
 
         try:
             images2, label2 = next(dataloader_iterator)
@@ -35,8 +35,9 @@ def train(augmented1, augmented2, model, loss_fn, optimizer, image_encoder, text
 
             #  Step 0.5: predict the class of the images with CLIP
 
-            predict_class_first = ...
-            predict_class_second = ...
+            predict_class_first, probs_first = clip.model_inference(images, embeddings) #NOTE: Need access to the embeddings here
+            predict_class_second, probs_second = clip.model_inference(images2, embeddings) #NOTE: Need access to the embeddings here
+
 
        # Step 1.
         # Prepare the inputs to be passed to the model (i.e, turn the words
@@ -69,9 +70,9 @@ def train(augmented1, augmented2, model, loss_fn, optimizer, image_encoder, text
         text_features1, text_features2 = model(
             augmented1, 
             augmented2, 
-            word_idxs_first, 
-            word_idxs_second, 
-            text_encoder)
+            predict_class_first, 
+            predict_class_second, 
+            clip)
 
        # Step 4. Compute your loss function. (Again, Torch wants the target
        # word wrapped in a tensor)
@@ -88,11 +89,13 @@ def train(augmented1, augmented2, model, loss_fn, optimizer, image_encoder, text
     return (total_loss / total_size)
 
 def main():
+    clip_model = ZeroshotCLIP()
+    clip.build_model()
     #obtain data
     augmented1, augmented2 = augment_image()
     #augmented1 and augmented2 shape: (60000/BATCHSIZE,  [64, 1, 28, 28](images), 64(labels))
 
-    EMBEDDING_DIM = 5
+    EMBEDDING_DIM = 5 #Need to make this consistent with clip
     VOCAB_SIZE = 10
     #create model with embedding matrix
     model = PromptLearner(VOCAB_SIZE, EMBEDDING_DIM)
@@ -110,20 +113,10 @@ def main():
     # info on loss: https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#ntxentloss
     loss_func = losses.NTXentLoss(temperature=0.07)
 
-   image_encoder = ...
-   text_encoder = ...
-
     #call train
     for epoch in range(10):
-        loss = train(augmented1, augmented2, model, loss_func, optimizer,image_encoder, text_encoder)
+        loss = train(augmented1, augmented2, model, loss_func, optimizer, clip_model)
         losses += loss
-
-
-def main2():
-    print("hello")
-    clip = ZeroshotCLIP()
-    clip.build_model()
-    clip.model_inference()
 
 
 if __name__ == '__main__':

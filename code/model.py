@@ -9,6 +9,7 @@ torch.manual_seed(17)
 
 import numpy as np
 import torch.nn as nn
+import zsl_clip
 from torch.nn import functional as F
 from torch.cuda.amp import GradScaler, autocast
 from clip import clip
@@ -32,7 +33,7 @@ class PromptLearner(nn.Module):
 
 
     #Takes in a batch of images
-    def forward(self, vis_features_first, vis_features_second, inputs_first, inputs_second, image_encoder, text_encoder):
+    def forward(self, vis_features_first, vis_features_second, inputs_first, inputs_second, clip_model):
 
         #Do this step previous to calling the model and its forward pass
         #Code chunk moved to training
@@ -48,26 +49,26 @@ class PromptLearner(nn.Module):
         embeds_second = self.embeddings(inputs_second).view((1, -1))
 
         print("Adding Visual Features")
+        #depending on prediction, add image features to class vector/prompt (this is the thing we learn)
         out_first = np.add(embeds_first, vis_features_first)
         out_second = np.add(embeds_second, vis_features_second)
 
         print("Attach Prompt")
         FIXED_PROMPT = "A photo of a"
 
-        out_first = FIXED_PROMPT + out_first
-        out_second = FIXED_PROMPT + out_second
+        #Don't think we want this - fixed prompt is a string that still needs to be
+        #turned into embeddings by clip, and out_first/second is already an
+        #embedding. This is handled in zsl_clip
+        # out_first = FIXED_PROMPT + out_first 
+        # out_second = FIXED_PROMPT + out_second
 
         
         print("Encoding Prompts")
+        #NOTE: I'm not positive if this is the way we want to freeze the text encoder,
+        #based on this link: https://pytorch.org/docs/master/notes/autograd.html
         with torch.no_grad():
-            out_first = text_encoder.forward(out_first)
-            out_second = text_encoder.forward(out_second)
-
-        #do clip ZSL prediction using zsl_clip.py
-        #depending on prediction, add image features to class vector/prompt (this is the thing we learn)
-        #feed prompts into text encoder (the prompt is the static thing "a photo of a" + the <image feature + class rep> vector)
-        #do contrastive loss
-        """ encoded_text = clip.encode_text(text)
-        return encoded_text """
+            #feed prompts into text encoder (the prompt is the static thing "a photo of a" + the <image feature + class rep> vector)
+            out_first = clip_model.text_encoder(FIXED_PROMPT, embedding=out_first)
+            out_second = clip_model.text_encoder(FIXED_PROMPT, embedding=out_second)
 
         return (out_first, out_second)

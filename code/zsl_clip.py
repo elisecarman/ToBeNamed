@@ -37,34 +37,33 @@ class ZeroshotCLIP(nn.Module):
         print("Loading CLIP")
         device = "cuda" if torch.cuda.is_available() else "cpu"
         clip_model, preprocess = clip.load("ViT-B/32", device=device)
-
-        # clip_model.to(self.device)
-
-        # temp = CUSTOM_TEMPLATES[cfg.DATASET.NAME]
-        # prompts = [temp.format(c.replace("_", " ")) for c in classnames]
-        # print(f"Prompts: {prompts}")
-        prompts = ["a photo of a pickup truck", "a photo of a dog", "a photo of an apple"]
-        prompts = torch.cat([clip.tokenize(p) for p in prompts])
-        # prompts = prompts.to(self.device)
-
-        with torch.no_grad():
-            text_features = clip_model.encode_text(prompts)
-            text_features = text_features / text_features.norm(dim=-1, keepdim=True)
-
-        self.text = prompts
-        self.text_features = text_features
+        
+        self.prompt_template = "a photo of a {}"
         self.clip_model = clip_model
         self.preprocess = preprocess
         self.device = device
 
-    def model_inference(self):
-        image = self.preprocess(Image.open("data/cockapoo.png")).unsqueeze(0).to(self.device)
-        image_features = self.clip_model.encode_image(image)
-        image_features = image_features / image_features.norm(dim=-1, keepdim=True)
-        logit_scale = self.clip_model.logit_scale.exp()
-        logits = logit_scale * image_features @ self.text_features.t()
-        probs = logits.softmax(dim=-1).cpu()
-        print("Logits: " + str(logits))
-        print("Probs: " + str(probs))
-        return logits
+    #embeddings is a list of embeddings for each class name
+    def model_inference(self, images, embeddings):
+        prompts = [prompt_template.format(e) for e in embeddings]
+        prompts = torch.cat([clip.tokenize(p) for p in prompts])
+        image = self.preprocess(images).unsqueeze(0).to(self.device)
+        logits_per_image, logits_per_text = model(image, text)
+        probs = logits_per_image.softmax(dim=-1).cpu().numpy()
+        preds = torch.argmax(probs, dim=1)
+        return preds, probs
+    
+    #for these two functions, might have to check the output dim
+    def encode_image(image):
+        return self.clip_model.encode_image(image)
+
+    def encode_text(text, embedding=None):
+        if embedding:
+            prompts = torch.cat([clip.tokenize(p) for p in prompts])
+            promts = torch.cat(prompts, 0) #add class embedding to the end of prompt
+            return self.clip_model.encode_text(prompts)
+        else:
+            prompts = torch.cat([clip.tokenize(p) for p in prompts])
+            return self.clip_model.encode_text(prompts)
+
 
