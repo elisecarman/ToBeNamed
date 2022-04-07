@@ -17,23 +17,32 @@ def train(augmented1, augmented2, model, loss_fn, optimizer, image_encoder, text
     total_loss = 0
 
     #need to fix this for loop statement
-    for i, (images, labels) in enumerate(augmented1):
+   dataloader_iterator = iter(augmented2)
+
+    for i, (images, label) in enumerate(augmented1):
+
+        try:
+            images2, label2 = next(dataloader_iterator)
+        except StopIteration:
+            dataloader_iterator = iter(augmented_loaded2)
+            images2, label2 = next(dataloader_iterator)
 
         # Step 0: visually encode the augmented images
 
-        visual_features = image_encoder.forward(augmented1)
-        second_visual_features = image_encoder.forward(augmented2)
+        with torch.no_grad():
+            visual_features = image_encoder.forward(images)
+            second_visual_features = image_encoder.forward(images2)
 
-        #  Step 0.5: predict the class of the images with CLIP
+            #  Step 0.5: predict the class of the images with CLIP
 
-        predict_class_first = ...
-        predict_class_second = ...
+            predict_class_first = ...
+            predict_class_second = ...
 
        # Step 1.
         # Prepare the inputs to be passed to the model (i.e, turn the words
        # into integer indices and wrap them in tensors)
 
-        word_to_ix = {
+      """   word_to_ix = {
             "T-Shirt" : 0,
             "Trouser" : 1,
             "Pullover" : 2,
@@ -44,11 +53,12 @@ def train(augmented1, augmented2, model, loss_fn, optimizer, image_encoder, text
             "Sneaker" : 7,
             "Bag" : 8,
             "Ankle Boot" : 9,
-        }
+        } 
 
         word_idxs_first = torch.tensor([word_to_ix[w] for w in predict_class_first], dtype=torch.long)
         word_idxs_second = torch.tensor([word_to_ix[w] for w in predict_class_second], dtype=torch.long)
-
+        """
+        
        # Step 2. Recall that torch *accumulates* gradients. Before passing in a
        # new instance, you need to zero out the gradients from the old
        # instance
@@ -98,7 +108,7 @@ def main():
     optimizer = optim.SGD(model.parameters(), lr=0.001)
     
     # info on loss: https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#ntxentloss
-    loss_func = losses.NTXentLoss(temperature=0.07, **kwargs)
+    loss_func = losses.NTXentLoss(temperature=0.07)
 
    image_encoder = ...
    text_encoder = ...

@@ -57,10 +57,11 @@ class PromptLearner(nn.Module):
         out_first = FIXED_PROMPT + out_first
         out_second = FIXED_PROMPT + out_second
 
+        
         print("Encoding Prompts")
-
-        out_first = text_encoder.forward(out_first)
-        out_second = text_encoder.forward(out_second)
+        with torch.no_grad():
+            out_first = text_encoder.forward(out_first)
+            out_second = text_encoder.forward(out_second)
 
         #do clip ZSL prediction using zsl_clip.py
         #depending on prediction, add image features to class vector/prompt (this is the thing we learn)
