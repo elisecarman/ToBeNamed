@@ -24,9 +24,12 @@ class PromptLearner(nn.Module):
 
 
 
-    def __init__(self, vocab_size, embedding_dim):
+    def __init__(self, initial_embeddings):
         super(PromptLearner, self).__init__()
-        self.embeddings = nn.Embedding(vocab_size, embedding_dim)
+        #we initialize the embeddings to be the clip embeddings for the classname
+        self.embedding = nn.Embedding(initial_embeddings.size(0), initial_mbeddings.size(1))
+        embedding.weight = nn.Parameter(initial_embeddings)
+        self.lambda = 1 #hyperparameter to adjust how much image feature changes prompt
         """ self.image_encoder = ImageEncoder()
         self.text_encoder = LanguageEncoder() """
         #Question: Where to include activation? (Relu)
@@ -50,8 +53,8 @@ class PromptLearner(nn.Module):
 
         print("Adding Visual Features")
         #depending on prediction, add image features to class vector/prompt (this is the thing we learn)
-        out_first = np.add(embeds_first, vis_features_first)
-        out_second = np.add(embeds_second, vis_features_second)
+        out_first = np.add(embeds_first, self.lambda * vis_features_first)
+        out_second = np.add(embeds_second, self.lambda * vis_features_second)
 
         print("Attach Prompt")
         FIXED_PROMPT = "A photo of a"

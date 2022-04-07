@@ -20,7 +20,6 @@ def train(augmented1, augmented2, model, loss_fn, optimizer, clip_model):
    dataloader_iterator = iter(augmented2)
 
     for i, (images, label) in enumerate(augmented1): #NOTE: We won't have the labels
-
         try:
             images2, label2 = next(dataloader_iterator)
         except StopIteration:
@@ -35,9 +34,9 @@ def train(augmented1, augmented2, model, loss_fn, optimizer, clip_model):
 
             #  Step 0.5: predict the class of the images with CLIP
 
-            predict_class_first, probs_first = clip.model_inference(images, embeddings) #NOTE: Need access to the embeddings here
-            predict_class_second, probs_second = clip.model_inference(images2, embeddings) #NOTE: Need access to the embeddings here
-
+            predict_class_first, probs_first = clip.model_inference(images, model.embeddings)
+            predict_class_second, probs_second = clip.model_inference(images2, model.embeddings)
+            #TODO: Delete elements if the predictions are not the same
 
        # Step 1.
         # Prepare the inputs to be passed to the model (i.e, turn the words
@@ -90,15 +89,27 @@ def train(augmented1, augmented2, model, loss_fn, optimizer, clip_model):
 
 def main():
     clip_model = ZeroshotCLIP()
-    clip.build_model()
+    clip_model.build_model()
+    classnames = [
+        "T-Shirt",
+        "Trouser",
+        "Pullover",
+        "Dress",
+        "Coat",
+        "Sandal",
+        "Shirt",
+        "Sneaker",
+        "Bag",
+        "Ankle Boot"
+    ]
+
     #obtain data
     augmented1, augmented2 = augment_image()
     #augmented1 and augmented2 shape: (60000/BATCHSIZE,  [64, 1, 28, 28](images), 64(labels))
 
-    EMBEDDING_DIM = 5 #Need to make this consistent with clip
-    VOCAB_SIZE = 10
+    initial_embeddings = torch.cat([clip.tokenize(c) for c in classnames])
     #create model with embedding matrix
-    model = PromptLearner(VOCAB_SIZE, EMBEDDING_DIM)
+    model = PromptLearner(initial_embeddings)
 
     #Keeping this here, but will probably not need it
     """ 
@@ -120,4 +131,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main2()
+    main()
