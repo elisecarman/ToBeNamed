@@ -9,7 +9,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 from torch.cuda.amp import GradScaler, autocast
 
-def augment_image(dbatchsize):
+def augment_image(batchsize):
     augmented1 = torch.utils.data.DataLoader(
     datasets.FashionMNIST(
                 root="data",

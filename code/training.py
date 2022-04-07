@@ -6,18 +6,21 @@ import torch.nn as nn
 from torch.nn import functional as F
 from torch.cuda.amp import GradScaler, autocast
 
+from pytorch_metric_learning import losses
 from torchvision import datasets
 from zsl_clip import ZeroshotCLIP
 from PIL import Image
 from utils import augment_image
 from model import PromptLearner
+from clip import clip
+
 
 def train(augmented1, augmented2, model, loss_fn, optimizer, clip_model):
     total_size = len(augmented1)
     total_loss = 0
 
     #need to fix this for loop statement
-   dataloader_iterator = iter(augmented2)
+    dataloader_iterator = iter(augmented2)
 
     for i, (images, label) in enumerate(augmented1): #NOTE: We won't have the labels
         try:
@@ -42,7 +45,7 @@ def train(augmented1, augmented2, model, loss_fn, optimizer, clip_model):
         # Prepare the inputs to be passed to the model (i.e, turn the words
        # into integer indices and wrap them in tensors)
 
-      """   word_to_ix = {
+        """   word_to_ix = {
             "T-Shirt" : 0,
             "Trouser" : 1,
             "Pullover" : 2,
@@ -73,9 +76,9 @@ def train(augmented1, augmented2, model, loss_fn, optimizer, clip_model):
             predict_class_second, 
             clip)
 
-       # Step 4. Compute your loss function. (Again, Torch wants the target
-       # word wrapped in a tensor)
-        loss = loss_function(text_features1, text_features2, dtype=torch.long))
+        # Step 4. Compute your loss function. (Again, Torch wants the target
+        # word wrapped in a tensor)
+        loss = loss_function(text_features1, text_features2, dtype=torch.long)
         """loss = loss_func(embeddings, labels)"""
 
         # Step 5. Do the backward pass and update the gradient visual features
@@ -104,10 +107,8 @@ def main():
     ]
 
     #obtain data
-    augmented1, augmented2 = augment_image()
-    #augmented1 and augmented2 shape: (60000/BATCHSIZE,  [64, 1, 28, 28](images), 64(labels))
 
-    initial_embeddings = torch.cat([clip.tokenize(c) for c in classnames])
+    initial_embeddings = torch.cat([clip.tokenize(c) for c in classnames]).float()
     #create model with embedding matrix
     model = PromptLearner(initial_embeddings)
 
@@ -116,18 +117,20 @@ def main():
     #create a word to index dictionary to peruse embeddings
     word_to_ix = {word: i for i, word in enumerate(labels)} """
 
-    
-    losses = []
-
-    optimizer = optim.SGD(model.parameters(), lr=0.001)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
     
     # info on loss: https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#ntxentloss
     loss_func = losses.NTXentLoss(temperature=0.07)
 
+    loss_list = []
+
     #call train
     for epoch in range(10):
+        print("EPOCH: {}".format(epoch))
+        #augmented1 and augmented2 shape: (60000/BATCHSIZE,  [64, 1, 28, 28](images), 64(labels))
+        augmented1, augmented2 = augment_image(128) #must augment data each time
         loss = train(augmented1, augmented2, model, loss_func, optimizer, clip_model)
-        losses += loss
+        loss_list += loss
 
 
 if __name__ == '__main__':
