@@ -59,7 +59,7 @@ class CustomTextEncoder(torch.nn.Module):
             else text_features
         )
         x = x.permute(1, 0, 2)
-        x = self.transformer(x)
+        x = self.transformer(x) #on cpu, running into error here
         x = x.permute(1, 0, 2)
         x = self.ln_final(x)
         tf = (

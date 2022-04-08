@@ -99,11 +99,21 @@ def train(augmented1, augmented2, model, loss_fn, optimizer, text_encoder, image
 def main():
     print("Loading CLIP")
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cuda":
+        is_gpu = True
     print("DEVICE - {}".format(device))
+
     clip_model, preprocess_transform = clip.load("ViT-B/32", device=device)
-    text_encoder = CustomTextEncoder(clip_model).cuda()
-    image_encoder = ImageEncoder(clip_model).cuda()
-    clip_zsl = ZeroshotCLIP(text_encoder, image_encoder).cuda()
+
+    text_encoder = CustomTextEncoder(clip_model)
+    image_encoder = ImageEncoder(clip_model)
+    if is_gpu:
+        text_encoder = text_encoder.cuda()
+        image_encoder = image_encoder.cuda()
+
+    clip_zsl = ZeroshotCLIP(text_encoder, image_encoder)
+    if is_gpu:
+        clip_zsl = clip_zsl.cuda()
 
     classnames = [
         "T-Shirt",
@@ -120,9 +130,11 @@ def main():
 
     #obtain data
 
-    initial_embeddings = torch.cat([clip.tokenize(c) for c in classnames]).float().cuda()
+    initial_embeddings = torch.cat([clip.tokenize(c) for c in classnames]).float()
     #create model with embedding matrix
-    model = PromptLearner(initial_embeddings, text_encoder).cuda()
+    model = PromptLearner(initial_embeddings, text_encoder)
+    if is_gpu:
+        model = model.cuda()
 
     #Keeping this here, but will probably not need it
     """ 
@@ -132,7 +144,7 @@ def main():
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
     
     # info on loss: https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#ntxentloss
-    loss_func = losses.NTXentLoss(temperature=0.07).cuda()
+    loss_func = losses.NTXentLoss(temperature=0.07)
 
     loss_list = []
 
