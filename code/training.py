@@ -12,10 +12,11 @@ from zsl_clip import ZeroshotCLIP
 from PIL import Image
 from utils import augment_image
 from model import PromptLearner
+from modules import CustomTextEncoder, ImageEncoder
 from clip import clip
 
 
-def train(augmented1, augmented2, model, loss_fn, optimizer, clip_model):
+def train(augmented1, augmented2, model, loss_fn, optimizer, text_encoder, image_encoder, clip_zsl, device):
     total_size = len(augmented1)
     total_loss = 0
 
@@ -23,8 +24,12 @@ def train(augmented1, augmented2, model, loss_fn, optimizer, clip_model):
     dataloader_iterator = iter(augmented2)
 
     for i, (images, label) in enumerate(augmented1): #NOTE: We won't have the labels
+        images = images.to(device)
+        label = label.to(device)
         try:
             images2, label2 = next(dataloader_iterator)
+            images2 = images2.to(device)
+            label2 = label2.to(device)
         except StopIteration:
             dataloader_iterator = iter(augmented_loaded2)
             images2, label2 = next(dataloader_iterator)
@@ -32,13 +37,15 @@ def train(augmented1, augmented2, model, loss_fn, optimizer, clip_model):
         # Step 0: visually encode the augmented images
 
         with torch.no_grad():
-            visual_features = image_encoder.forward(images)
-            second_visual_features = image_encoder.forward(images2)
+            # print(images)
+            # print(type(images))
+            visual_features = image_encoder(images)
+            second_visual_features = image_encoder(images2)
 
             #  Step 0.5: predict the class of the images with CLIP
-
-            predict_class_first, probs_first = clip.model_inference(images, model.embeddings)
-            predict_class_second, probs_second = clip.model_inference(images2, model.embeddings)
+            
+            predict_class_first, probs_first = clip_zsl.model_inference(images, model.embeddings)
+            predict_class_second, probs_second = clip_zsl.model_inference(images2, model.embeddings)
             #TODO: Delete elements if the predictions are not the same
 
        # Step 1.
@@ -73,8 +80,7 @@ def train(augmented1, augmented2, model, loss_fn, optimizer, clip_model):
             augmented1, 
             augmented2, 
             predict_class_first, 
-            predict_class_second, 
-            clip)
+            predict_class_second)
 
         # Step 4. Compute your loss function. (Again, Torch wants the target
         # word wrapped in a tensor)
@@ -91,8 +97,14 @@ def train(augmented1, augmented2, model, loss_fn, optimizer, clip_model):
     return (total_loss / total_size)
 
 def main():
-    clip_model = ZeroshotCLIP()
-    clip_model.build_model()
+    print("Loading CLIP")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print("DEVICE - {}".format(device))
+    clip_model, preprocess_transform = clip.load("ViT-B/32", device=device)
+    text_encoder = CustomTextEncoder(clip_model).cuda()
+    image_encoder = ImageEncoder(clip_model).cuda()
+    clip_zsl = ZeroshotCLIP(text_encoder, image_encoder).cuda()
+
     classnames = [
         "T-Shirt",
         "Trouser",
@@ -108,9 +120,9 @@ def main():
 
     #obtain data
 
-    initial_embeddings = torch.cat([clip.tokenize(c) for c in classnames]).float()
+    initial_embeddings = torch.cat([clip.tokenize(c) for c in classnames]).float().cuda()
     #create model with embedding matrix
-    model = PromptLearner(initial_embeddings)
+    model = PromptLearner(initial_embeddings, text_encoder).cuda()
 
     #Keeping this here, but will probably not need it
     """ 
@@ -120,7 +132,7 @@ def main():
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
     
     # info on loss: https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#ntxentloss
-    loss_func = losses.NTXentLoss(temperature=0.07)
+    loss_func = losses.NTXentLoss(temperature=0.07).cuda()
 
     loss_list = []
 
@@ -128,8 +140,8 @@ def main():
     for epoch in range(10):
         print("EPOCH: {}".format(epoch))
         #augmented1 and augmented2 shape: (60000/BATCHSIZE,  [64, 1, 28, 28](images), 64(labels))
-        augmented1, augmented2 = augment_image(128) #must augment data each time
-        loss = train(augmented1, augmented2, model, loss_func, optimizer, clip_model)
+        augmented1, augmented2 = augment_image(preprocess_transform, 128) #must augment data each time
+        loss = train(augmented1, augmented2, model, loss_func, optimizer, text_encoder, image_encoder, clip_zsl, device)
         loss_list += loss
 
 
