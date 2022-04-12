@@ -14,7 +14,7 @@ from torch.nn import functional as F
 from torch.cuda.amp import GradScaler, autocast
 from clip import clip
 from clip.simple_tokenizer import SimpleTokenizer as _Tokenizer
-from modules import ImageEncoder, LanguageEncoder
+from modules import ImageEncoder, CustomTextEncoder
 from utils import augment_image
 
 
@@ -24,19 +24,19 @@ class PromptLearner(nn.Module):
 
 
 
-    def __init__(self, initial_embeddings):
+    def __init__(self, initial_embeddings, text_encoder):
         super(PromptLearner, self).__init__()
         #we initialize the embeddings to be the clip embeddings for the classname
-        self.embedding = nn.Embedding(initial_embeddings.size(0), initial_mbeddings.size(1))
-        embedding.weight = nn.Parameter(initial_embeddings)
-        self.lambda = 1 #hyperparameter to adjust how much image feature changes prompt
+        self.embeddings = nn.Embedding.from_pretrained(initial_embeddings).cuda()
+        self.alpha = 1 #hyperparameter to adjust how much image feature changes prompt
+        self.text_encoder = text_encoder
         """ self.image_encoder = ImageEncoder()
         self.text_encoder = LanguageEncoder() """
         #Question: Where to include activation? (Relu)
 
 
     #Takes in a batch of images
-    def forward(self, vis_features_first, vis_features_second, inputs_first, inputs_second, clip_model):
+    def forward(self, vis_features_first, vis_features_second, inputs_first, inputs_second):
 
         #Do this step previous to calling the model and its forward pass
         #Code chunk moved to training
@@ -53,8 +53,8 @@ class PromptLearner(nn.Module):
 
         print("Adding Visual Features")
         #depending on prediction, add image features to class vector/prompt (this is the thing we learn)
-        out_first = np.add(embeds_first, self.lambda * vis_features_first)
-        out_second = np.add(embeds_second, self.lambda * vis_features_second)
+        out_first = np.add(embeds_first, self.alpha * vis_features_first)
+        out_second = np.add(embeds_second, self.alpha * vis_features_second)
 
         print("Attach Prompt")
         FIXED_PROMPT = "A photo of a"
@@ -70,8 +70,8 @@ class PromptLearner(nn.Module):
         #NOTE: I'm not positive if this is the way we want to freeze the text encoder,
         #based on this link: https://pytorch.org/docs/master/notes/autograd.html
         with torch.no_grad():
-            #feed prompts into text encoder (the prompt is the static thing "a photo of a" + the <image feature + class rep> vector)
-            out_first = clip_model.text_encoder(FIXED_PROMPT, embedding=out_first)
-            out_second = clip_model.text_encoder(FIXED_PROMPT, embedding=out_second)
+            #feed prompts into text encoder (the prompt is the static thing "a photo of a", and the <image feature + class rep> vector)
+            out_first = self.text_encoder(FIXED_PROMPT, out_first)
+            out_second = self.text_encoder(FIXED_PROMPT, out_second)
 
         return (out_first, out_second)
