@@ -27,7 +27,7 @@ class PromptLearner(nn.Module):
     def __init__(self, initial_embeddings, text_encoder):
         super(PromptLearner, self).__init__()
         #we initialize the embeddings to be the clip embeddings for the classname
-        self.embeddings = nn.Embedding.from_pretrained(initial_embeddings).cuda()
+        self.embeddings = nn.Embedding.from_pretrained(initial_embeddings)
         self.alpha = 1 #hyperparameter to adjust how much image feature changes prompt
         self.text_encoder = text_encoder
         """ self.image_encoder = ImageEncoder()

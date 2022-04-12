@@ -101,6 +101,8 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     if device == "cuda":
         is_gpu = True
+    else:
+        is_gpu = False
     print("DEVICE - {}".format(device))
 
     clip_model, preprocess_transform = clip.load("ViT-B/32", device=device)
@@ -108,12 +110,12 @@ def main():
     text_encoder = CustomTextEncoder(clip_model)
     image_encoder = ImageEncoder(clip_model)
     if is_gpu:
-        text_encoder = text_encoder.cuda()
-        image_encoder = image_encoder.cuda()
+        text_encoder = text_encoder.to(device)
+        image_encoder = image_encoder.to(device)
 
     clip_zsl = ZeroshotCLIP(text_encoder, image_encoder)
     if is_gpu:
-        clip_zsl = clip_zsl.cuda()
+        clip_zsl = clip_zsl.to(device)
 
     classnames = [
         "T-Shirt",
@@ -130,11 +132,20 @@ def main():
 
     #obtain data
 
-    initial_embeddings = torch.cat([clip.tokenize(c) for c in classnames]).float()
+    #this line tokenizes and embeds each class name, but tokenize creates a 
+    #tensor of length 77
+    initial_embeddings = torch.cat([clip_model.token_embedding(clip.tokenize(c)) for c in classnames]).float()
+    print("initial embeddings shape")
+    print(initial_embeddings.shape)
+    #this line cleans the above by fetching the embedding for the word
+    #idx 0 is used for the singleton dimension
+    #idx 1 is used to get the second vector (first is a <beginning of seq vector>)
+    initial_embeddings = initial_embeddings[:, 1, :]
+    # initial_embeddings = [embedding[0, 1, :] for embedding in initial_embeddings]
     #create model with embedding matrix
     model = PromptLearner(initial_embeddings, text_encoder)
     if is_gpu:
-        model = model.cuda()
+        model = model.to(device)
 
     #Keeping this here, but will probably not need it
     """ 

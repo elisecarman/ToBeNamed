@@ -36,8 +36,8 @@ class ZeroshotCLIP(nn.Module):
     def __init__(self, text_encoder, image_encoder):
         device = "cuda" if torch.cuda.is_available() else "cpu"
         super(ZeroshotCLIP, self).__init__()
-        self.prompt_template = "a photo of a"
-        self.text_encoder = text_encoder
+        self.prompt_template = "a photo of a X"
+        self.text_encoder = text_encoder #the custom text encoder
         self.image_encoder = image_encoder
         self.device = device
 
@@ -46,8 +46,12 @@ class ZeroshotCLIP(nn.Module):
         #Tokenizes the static prompt, once for each class/embedding
         image_features = self.image_encoder(images)
         image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+
+        encoded_text = self.text_encoder(self.prompt_template, embeddings)
         prompt_ids = torch.cat([clip.tokenize(self.prompt_template) for _ in range(len(embeddings.weight.data))])
+
         text_features = self.text_encoder(prompt_ids, embeddings)
+        text_features = encoded_text #there is some redundant code here that will be deleted soon
         logit_scale = self.clip_model.logit_scale.exp()
         logits = logit_scale * image_features @ self.text_features.t()
         return logits
